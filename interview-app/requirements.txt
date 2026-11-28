@@ -1,0 +1,24 @@
+# コア（必須）
+fastapi
+uvicorn[standard]
+qrcode
+pillow
+python-multipart
+httpx
+numpy
+# 資料取り込み
+pypdf
+python-docx
+# 音声認識（フェーズ1）
+faster-whisper
+sounddevice
+soundfile
+# Windows: PC内部音声(WASAPIループバック)取得用
+# PyAudioWPatch ; sys_platform == "win32"
+# 任意: 意味検索の高精度化（未導入時はTF-IDFフォールバックが自動で使われます）
+# sentence-transformers
+# 任意: 高精度VAD（未導入時はエネルギーVAD）
+# silero-vad
+# テスト
+pytest
+websockets

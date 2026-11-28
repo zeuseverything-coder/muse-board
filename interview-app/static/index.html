@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>リアルタイムAI面接支援</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <h1>AI面接支援</h1>
+  <div id="connStatus" class="badge ng">未接続</div>
+  <div id="recStatus" class="badge hidden">● 音声認識中</div>
+  <button id="themeBtn" title="ライト/ダーク切替">🌙</button>
+</header>
+<p class="notice">本アプリは、模擬面接およびAI利用の許可を得た面接でのみ使用してください。音声は初期設定では保存されません。</p>
+<nav id="tabs">
+  <button data-view="home" class="active">ホーム</button>
+  <button data-view="prep">面接準備</button>
+  <button data-view="docs">資料管理</button>
+  <button data-view="profiles">企業プロファイル</button>
+  <button data-view="qa">想定問答</button>
+  <button data-view="live">ライブ支援</button>
+  <button data-view="history">面接履歴</button>
+  <button data-view="settings">設定</button>
+  <button data-view="test">接続・動作テスト</button>
+</nav>
+
+<main>
+<!-- ホーム -->
+<section id="view-home" class="view active">
+  <h2>ホーム</h2>
+  <div id="sysStatus" class="card">システム状態を確認中…</div>
+  <div class="card">
+    <h3>使い方</h3>
+    <ol>
+      <li>「資料管理」で職務経歴書や自己分析を登録</li>
+      <li>「想定問答」で想定質問と回答を登録</li>
+      <li>「企業プロファイル」で応募先企業を作成</li>
+      <li>「面接準備」でセッションを開始し、スマホをQRコードで接続</li>
+      <li>「ライブ支援」で面接開始（PC内部音声／マイク／ブラウザマイク／手動入力）</li>
+    </ol>
+  </div>
+</section>
+
+<!-- 面接準備 -->
+<section id="view-prep" class="view">
+  <h2>面接準備</h2>
+  <div class="card">
+    <label>企業プロファイル <select id="prepProfile"></select></label>
+    <button id="startSessionBtn">セッション開始</button>
+    <button id="endSessionBtn" class="danger" disabled>セッション終了</button>
+    <div id="sessionInfo"></div>
+    <div id="qrBox"></div>
+  </div>
+  <div class="card">
+    <h3>音声ソース（このPCで取得）</h3>
+    <button id="startLoopbackBtn">PC内部音声（面接官）を開始</button>
+    <button id="startMicBtn">マイク（自分）を開始</button>
+    <button id="stopAudioBtn">音声取得を停止</button>
+    <div id="audioDeviceList"></div>
+    <p class="small">※ PC内部音声（WASAPIループバック）はWindows専用です。ブラウザのマイク入力は「ライブ支援」画面からも使えます。</p>
+  </div>
+</section>
+
+<!-- 資料管理 -->
+<section id="view-docs" class="view">
+  <h2>資料管理</h2>
+  <div class="card">
+    <label>種別 <select id="docKind"></select></label>
+    <label>企業 <select id="docProfile"><option value="">共通</option></select></label>
+    <input id="docTitle" placeholder="タイトル">
+    <textarea id="docContent" rows="6" placeholder="本文を貼り付け"></textarea>
+    <button id="addDocBtn">登録</button>
+    <hr>
+    <label>ファイル取り込み（PDF/DOCX/TXT/MD/CSV/JSON）
+      <input type="file" id="docFile"></label>
+    <button id="importDocBtn">取り込み</button>
+    <p class="small">CSV（質問,回答 の2列）は想定問答として取り込まれます。</p>
+  </div>
+  <div id="docList"></div>
+</section>
+
+<!-- 企業プロファイル -->
+<section id="view-profiles" class="view">
+  <h2>企業別プロファイル</h2>
+  <div class="card">
+    <input id="profName" placeholder="企業名">
+    <textarea id="profJob" rows="3" placeholder="求人情報・求める人物像"></textarea>
+    <textarea id="profNotes" rows="2" placeholder="企業研究メモ・志望動機など"></textarea>
+    <button id="addProfBtn">作成</button>
+  </div>
+  <div id="profList"></div>
+</section>
+
+<!-- 想定問答 -->
+<section id="view-qa" class="view">
+  <h2>想定問答管理</h2>
+  <div class="card">
+    <label>企業 <select id="qaProfile"><option value="">共通</option></select></label>
+    <textarea id="qaQuestion" rows="2" placeholder="想定質問"></textarea>
+    <textarea id="qaAnswer" rows="4" placeholder="登録回答"></textarea>
+    <button id="addQaBtn">登録</button>
+    <hr>
+    <input id="qaSearchInput" placeholder="検索テスト（言い回しを変えて試せます）">
+    <button id="qaSearchBtn">意味検索テスト</button>
+    <div id="qaSearchResult"></div>
+  </div>
+  <div id="qaList"></div>
+</section>
+
+<!-- ライブ支援 -->
+<section id="view-live" class="view">
+  <div class="live-head">
+    <h2>リアルタイム面接支援</h2>
+    <div class="controls">
+      <button id="pauseBtn">認識を一時停止</button>
+      <button id="browserMicBtn">ブラウザマイク開始</button>
+      <label>文字 <input type="range" id="fontSize" min="14" max="26" value="17"></label>
+      <label><input type="checkbox" id="pointsOnly"> 要点のみ</label>
+    </div>
+  </div>
+  <div class="levelwrap"><div id="levelBar"></div></div>
+  <div id="interim" class="interim"></div>
+  <div id="answerCard" class="answer-card hidden">
+    <div class="q-line"><span class="label">質問</span> <span id="curQuestion"></span>
+      <span id="srcBadge" class="badge"></span>
+      <button id="editQuestionBtn" class="small-btn">質問を修正</button>
+      <button id="regenBtn" class="small-btn">再生成</button>
+    </div>
+    <div class="points-label">回答の要点</div>
+    <ul id="curPoints" class="points"></ul>
+    <div id="answerBodyWrap">
+      <div class="points-label">回答例</div>
+      <div id="curAnswer" class="answer-body"></div>
+      <div id="curSupplement" class="supplement"></div>
+      <div id="curFollowups" class="followups"></div>
+    </div>
+  </div>
+  <div class="card">
+    <h3>手動入力（質問を貼り付けて生成）</h3>
+    <textarea id="manualText" rows="2" placeholder="面接官の発言を入力"></textarea>
+    <button id="manualSendBtn">判定して処理</button>
+    <button id="manualForceBtn">強制的に回答生成</button>
+  </div>
+  <h3>これまでの質問と回答</h3>
+  <div id="historyFeed"></div>
+  <h3>文字起こしログ</h3>
+  <div id="transcriptFeed" class="feed"></div>
+</section>
+
+<!-- 履歴 -->
+<section id="view-history" class="view">
+  <h2>面接履歴</h2>
+  <p class="small">履歴の保存は「設定」で有効化した場合のみ行われます（初期設定は保存しません）。</p>
+  <button id="clearHistoryBtn" class="danger">履歴を全削除</button>
+  <div id="historyList"></div>
+</section>
+
+<!-- 設定 -->
+<section id="view-settings" class="view">
+  <h2>設定</h2>
+  <div class="card">
+    <label><input type="checkbox" id="setSaveHistory"> 面接履歴を保存する</label>
+    <label>回答の長さ
+      <select id="setAnswerLength">
+        <option value="short">短め（30秒）</option>
+        <option value="normal" selected>標準（30〜60秒）</option>
+        <option value="long">長め（60〜90秒）</option>
+      </select></label>
+    <label>想定問答の一致しきい値 <input id="setQaThreshold" type="number" step="0.05" min="0" max="1"></label>
+    <button id="saveSettingsBtn">保存</button>
+  </div>
+  <div class="card danger-zone">
+    <h3>データの完全削除</h3>
+    <p class="small">登録資料・想定問答・企業プロファイル・履歴をすべて削除します。</p>
+    <button id="deleteAllBtn" class="danger">全データを削除</button>
+  </div>
+</section>
+
+<!-- テスト -->
+<section id="view-test" class="view">
+  <h2>接続・動作テスト</h2>
+  <div class="card">
+    <button id="runTestsBtn">セルフテスト実行</button>
+    <div id="testResults"></div>
+  </div>
+</section>
+</main>
+<script src="app.js"></script>
+</body>
+</html>
